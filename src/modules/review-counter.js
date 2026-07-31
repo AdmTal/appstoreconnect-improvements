@@ -1,7 +1,7 @@
-// App Store Connect Review Counter
+// Review Counter — reveals the actual number of ratings per star.
 //
-// Apple's "iOS Ratings" chart only shows per-star bars, but the bar fill
-// divs carry a full-precision width attribute (e.g. "80.53097345132744%").
+// Apple's ratings chart only shows per-star bars, but the bar fill divs
+// carry a full-precision width attribute (e.g. "80.53097345132744%").
 // Combined with the "113 Ratings" total shown under the chart, that is
 // enough to recover the exact number of ratings for each star.
 
@@ -10,13 +10,13 @@
 
   const BADGE_CLASS = 'asc-review-count';
   const ROW_LABEL_RE = /^(\d+)\s+Stars?\s+([\d.]+)%$/i;
-  const TOTAL_RE = /^([\d.,  ]+)\s+Ratings?$/i;
+  const TOTAL_RE = /^([\d.,  ]+)\s+Ratings?$/i;
 
   function parseTotal(container) {
     for (const p of container.querySelectorAll('p')) {
       const m = p.textContent.trim().match(TOTAL_RE);
       if (m) {
-        const n = parseInt(m[1].replace(/[.,  ]/g, ''), 10);
+        const n = parseInt(m[1].replace(/[.,  ]/g, ''), 10);
         if (Number.isFinite(n) && n > 0) return n;
       }
     }
@@ -78,10 +78,6 @@
     return counts;
   }
 
-  function badgeFor(row) {
-    return row.querySelector(':scope > .' + BADGE_CLASS);
-  }
-
   function annotateChart(container) {
     const total = parseTotal(container);
     if (!total) return;
@@ -100,13 +96,14 @@
         '% of ' +
         total.toLocaleString();
 
-      let badge = badgeFor(row.el);
+      let badge = row.el.querySelector(':scope > .' + BADGE_CLASS);
       if (!badge) {
         badge = document.createElement('span');
         badge.className = BADGE_CLASS;
+        badge.setAttribute('data-asc-ui', '');
         row.el.appendChild(badge);
       }
-      if (badge.textContent !== String(count.toLocaleString())) {
+      if (badge.textContent !== count.toLocaleString()) {
         badge.textContent = count.toLocaleString();
       }
       if (badge.getAttribute('data-tip') !== tip) {
@@ -132,32 +129,5 @@
     }
   }
 
-  let scheduled = null;
-  function scheduleRun() {
-    if (scheduled) return;
-    scheduled = setTimeout(() => {
-      scheduled = null;
-      run();
-    }, 250);
-  }
-
-  const observer = new MutationObserver((mutations) => {
-    // Ignore mutation batches caused purely by our own badges.
-    for (const m of mutations) {
-      const t = m.target;
-      if (t instanceof Element && (t.classList.contains(BADGE_CLASS) || t.closest('.' + BADGE_CLASS))) {
-        continue;
-      }
-      scheduleRun();
-      return;
-    }
-  });
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['aria-label', 'width'],
-  });
-
-  run();
+  window.ascImprovements.register({ id: 'review-counter', run });
 })();

@@ -1,13 +1,19 @@
 {
   "manifest_version": 3,
-  "name": "App Store Connect Review Counter",
-  "version": "1.0.0",
-  "description": "Reveals the actual number of ratings per star on App Store Connect's Ratings and Reviews page.",
+  "name": "App Store Connect Improvements",
+  "version": "1.1.0",
+  "description": "A collection of quality-of-life tweaks for App Store Connect. Currently: reveals the actual number of ratings per star.",
   "content_scripts": [
     {
       "matches": ["https://appstoreconnect.apple.com/*"],
-      "js": ["content.js"],
-      "css": ["styles.css"],
+      "js": [
+        "src/core.js",
+        "src/modules/review-counter.js",
+        "src/main.js"
+      ],
+      "css": [
+        "src/modules/review-counter.css"
+      ],
       "run_at": "document_idle"
     }
   ]

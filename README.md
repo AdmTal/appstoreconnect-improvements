@@ -1,8 +1,6 @@
-# App Store Connect Review Counter
+# App Store Connect Improvements
 
-A tiny Chrome extension that shows the **actual number of ratings per star** on App Store Connect's Ratings and Reviews page.
-
-Apple only shows the bar chart, but each bar's fill element carries a full-precision width percentage. Combined with the total ("113 Ratings"), the exact per-star counts can be recovered. This extension annotates each bar with its count and shows a tooltip with the percentage on hover.
+One Chrome extension hosting a growing collection of quality-of-life tweaks ("hacks") for [App Store Connect](https://appstoreconnect.apple.com).
 
 ## Install
 
@@ -10,13 +8,50 @@ Apple only shows the bar chart, but each bar's fill element carries a full-preci
 2. Open `chrome://extensions` in Chrome.
 3. Enable **Developer mode** (top right).
 4. Click **Load unpacked** and select this folder.
-5. Open your app's page at `https://appstoreconnect.apple.com/apps/<app-id>/distribution/ratings/ios` — counts appear to the right of each bar.
 
-## How it works
+## Improvements
 
-- A content script watches the page (the chart loads asynchronously) for the star-rating rows (`div[role="img"]` with an aria-label like `5 Stars 80.5%`).
-- It reads the full-precision bar width (e.g. `80.53097345132744%`), falling back to the aria-label percentage if the width attribute is malformed.
-- It finds the "N Ratings" total in the same chart and apportions counts with the largest-remainder method so they always sum exactly to the total.
+### Review Counter
+
+Shows the **actual number of ratings per star** on the Ratings and Reviews page (`.../distribution/ratings/ios`). Apple only shows the bar chart, but each bar's fill element carries a full-precision width percentage. Combined with the total ("113 Ratings"), the exact per-star counts can be recovered. Each bar gets a count badge on the right, with a tooltip showing the percentage on hover.
+
+Details:
+
+- Watches the page for the star-rating rows (`div[role="img"]` with an aria-label like `5 Stars 80.5%`) — the chart loads asynchronously.
+- Reads the full-precision bar width (e.g. `80.53097345132744%`), falling back to the aria-label percentage if the width attribute is malformed.
+- Finds the "N Ratings" total in the same chart and apportions counts with the largest-remainder method so they always sum exactly to the total.
+
+## Structure
+
+```
+manifest.json            MV3 manifest — lists every module's JS/CSS
+src/core.js              module registry (loaded first)
+src/main.js              runner — executes modules on load and on page mutations (loaded last)
+src/modules/<name>.js    one file per improvement
+src/modules/<name>.css   optional styles for an improvement
+```
+
+## Adding a new improvement
+
+1. Create `src/modules/my-tweak.js`:
+
+   ```js
+   (() => {
+     'use strict';
+
+     function run() {
+       // Find what you need in the DOM and tweak it. Must be idempotent —
+       // this is called on load and again after every page mutation.
+       // Mark any DOM you inject with the data-asc-ui attribute so the
+       // shared MutationObserver ignores it.
+     }
+
+     window.ascImprovements.register({ id: 'my-tweak', run });
+   })();
+   ```
+
+2. Add it to the `js` array in `manifest.json` (before `src/main.js`), plus a `css` entry if it has styles.
+3. Reload the extension on `chrome://extensions`.
 
 ## License
 
