@@ -9,6 +9,7 @@
   'use strict';
 
   const BADGE_CLASS = 'asc-review-count';
+  const ROW_CLASS = 'asc-rc-row';
   const ROW_LABEL_RE = /^(\d+)\s+Stars?\s+([\d.]+)%$/i;
   const TOTAL_RE = /^([\d.,  ]+)\s+Ratings?$/i;
 
@@ -96,6 +97,13 @@
         '% of ' +
         total.toLocaleString();
 
+      // The tooltip lives on the row itself so hovering anywhere on the
+      // star row shows it, not just the badge.
+      row.el.classList.add(ROW_CLASS);
+      if (row.el.getAttribute('data-asc-tip') !== tip) {
+        row.el.setAttribute('data-asc-tip', tip);
+      }
+
       let badge = row.el.querySelector(':scope > .' + BADGE_CLASS);
       if (!badge) {
         badge = document.createElement('span');
@@ -105,9 +113,6 @@
       }
       if (badge.textContent !== count.toLocaleString()) {
         badge.textContent = count.toLocaleString();
-      }
-      if (badge.getAttribute('data-tip') !== tip) {
-        badge.setAttribute('data-tip', tip);
       }
     });
   }

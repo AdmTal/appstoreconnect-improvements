@@ -1,42 +1,59 @@
-.asc-review-count {
+/* Star row — hovering anywhere on it shows the tooltip and lights the pill. */
+.asc-rc-row {
   position: relative;
+}
+
+/* Count pill, right of the bar. Kept short so tightly-stacked rows don't
+   collide, with tabular digits so the numbers line up column-style. */
+.asc-review-count {
   flex: 0 0 auto;
   align-self: center;
-  margin-left: 8px;
+  box-sizing: border-box;
+  margin-left: 10px;
   min-width: 34px;
-  padding: 1px 7px;
-  border-radius: 9px;
-  background: rgba(0, 113, 227, 0.12);
+  height: 16px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(0, 113, 227, 0.09);
   color: #0071e3;
   font: 600 11px/16px -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
   text-align: center;
-  cursor: default;
   white-space: nowrap;
+  cursor: default;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.asc-review-count:hover::after {
-  content: attr(data-tip);
+.asc-rc-row:hover .asc-review-count {
+  background: #0071e3;
+  color: #ffffff;
+}
+
+/* Tooltip bubble, anchored to the row's right edge above the pill. */
+.asc-rc-row:hover::after {
+  content: attr(data-asc-tip);
   position: absolute;
   right: 0;
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 7px);
   z-index: 9999;
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: 7px;
   background: rgba(29, 29, 31, 0.95);
   color: #f5f5f7;
   font: 400 12px/16px -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
   pointer-events: none;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.22);
 }
 
-.asc-review-count:hover::before {
+.asc-rc-row:hover::before {
   content: "";
   position: absolute;
-  right: 12px;
-  bottom: calc(100% + 1px);
+  right: 13px;
+  bottom: calc(100% + 2px);
   z-index: 9999;
   border: 5px solid transparent;
   border-top-color: rgba(29, 29, 31, 0.95);
