@@ -30,6 +30,133 @@
   color: #ffffff;
 }
 
+/* Change since the previous snapshot ("+2" / "-1"), next to the pill and
+   inside history-table cells. */
+.asc-rc-delta {
+  flex: 0 0 auto;
+  align-self: center;
+  margin-left: 5px;
+  font: 700 11px/16px -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.asc-rc-delta--up {
+  color: #1d9d50;
+}
+
+.asc-rc-delta--down {
+  color: #e30000;
+}
+
+/* "History" button under the "N Ratings" total. */
+.asc-rc-history-btn {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 10px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 113, 227, 0.09);
+  color: #0071e3;
+  font: 600 11px/16px -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.asc-rc-history-btn:hover {
+  background: #0071e3;
+  color: #ffffff;
+}
+
+/* History panel — fixed popover anchored to the History button. */
+.asc-rc-panel {
+  position: fixed;
+  z-index: 999999;
+  min-width: 380px;
+  max-width: calc(100vw - 24px);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  font: 400 12px/16px -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #1d1d1f;
+}
+
+.asc-rc-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.asc-rc-panel-close {
+  border: none;
+  background: none;
+  padding: 0 2px;
+  color: #86868b;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.asc-rc-panel-close:hover {
+  color: #1d1d1f;
+}
+
+.asc-rc-panel-empty {
+  padding: 18px 14px;
+  color: #86868b;
+}
+
+.asc-rc-panel-scroll {
+  max-height: 50vh;
+  overflow: auto;
+  border-radius: 0 0 12px 12px;
+}
+
+.asc-rc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.asc-rc-table th,
+.asc-rc-table td {
+  padding: 6px 12px;
+  text-align: right;
+}
+
+.asc-rc-table th:first-child,
+.asc-rc-table td:first-child,
+.asc-rc-table th:nth-child(2),
+.asc-rc-table td:nth-child(2) {
+  text-align: left;
+}
+
+.asc-rc-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f5f5f7;
+  color: #6e6e73;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.asc-rc-table tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.asc-rc-table .asc-rc-delta {
+  margin-left: 3px;
+}
+
 /* Tooltip bubble, anchored to the row's right edge above the pill. */
 .asc-rc-row:hover::after {
   content: attr(data-asc-tip);

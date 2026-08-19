@@ -21,6 +21,13 @@ Details:
 - Reads the full-precision bar width (e.g. `80.53097345132744%`), falling back to the aria-label percentage if the width attribute is malformed.
 - Finds the "N Ratings" total in the same chart and apportions counts with the largest-remainder method so they always sum exactly to the total.
 
+It also **tracks changes over time**:
+
+- Every time you view the chart, the current per-star counts are compared with the last stored snapshot (kept in `chrome.storage.local`, keyed by app id). A new history row is stored **only when a number actually changed** — and only when you actually have the page open; nothing polls in the background.
+- When a change is detected, each changed number gets a green `+x` / red `-x` delta next to its count pill for the rest of the page session.
+- A **History** button under the "N Ratings" total opens a panel with a table of every recorded snapshot — date, time, total, and 1–5 star counts, newest first, with per-row deltas against the previous snapshot. History is capped at 500 rows per chart.
+- Caveat: history is keyed by app, not by territory — switching the chart's country/region filter records the different numbers as a change.
+
 ## Structure
 
 ```
