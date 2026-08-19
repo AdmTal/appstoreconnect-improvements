@@ -9,7 +9,13 @@
 // counts differ from the last stored snapshot, a new row is saved to
 // chrome.storage.local (keyed by app id). Changed numbers get a "+x"/"-x"
 // delta next to their pill for the rest of the page session, and a
-// "History" button under the total opens a table of all recorded rows.
+// "History" button under the total opens a table of all recorded rows
+// (with a Clear button to wipe them).
+//
+// History only tracks the unfiltered chart: recording, deltas, and the
+// History button are active only while the territory picker shows
+// "All Countries or Regions" — a filtered territory shows different
+// numbers for the same app and would corrupt the stored history.
 
 (() => {
   'use strict';
@@ -76,6 +82,40 @@
   function chartKeyFor(index) {
     const m = location.pathname.match(/\/apps\/(\d+)/);
     return (m ? m[1] : 'app') + ':' + index;
+  }
+
+  // --- territory gating ------------------------------------------------------
+
+  const ALL_COUNTRIES_RE = /^All Countries or Regions$/i;
+
+  // True only when the ratings page's territory picker currently shows
+  // "All Countries or Regions". Walks the page's text nodes looking for that
+  // exact label, ignoring dropdown option lists (an open picker contains the
+  // label as an *option* regardless of what is selected) and our own UI.
+  function territoryIsAllCountries() {
+    const stack = [document.body];
+    while (stack.length) {
+      const node = stack.pop();
+      for (const child of node.childNodes) {
+        if (child.nodeType === 3 /* text */) {
+          if (!ALL_COUNTRIES_RE.test(child.nodeValue.trim())) continue;
+          const el = child.parentElement;
+          if (!el) continue;
+          if (
+            el.closest(
+              '[role="listbox"], [role="option"], [role="menu"], [role="menuitem"], [data-asc-ui]'
+            )
+          ) {
+            continue;
+          }
+          const opt = el.closest('option');
+          if (opt && !opt.selected) continue;
+          return true;
+        }
+        if (child.nodeType === 1 /* element */) stack.push(child);
+      }
+    }
+    return false;
   }
 
   // --- chart parsing ---------------------------------------------------------
@@ -173,7 +213,7 @@
     return (d > 0 ? '+' : '-') + Math.abs(d).toLocaleString();
   }
 
-  function annotateChart(container, key, store) {
+  function annotateChart(container, key, store, historyEnabled) {
     const totalInfo = parseTotal(container);
     if (!totalInfo) return false;
     const { total, el: totalEl } = totalInfo;
@@ -186,7 +226,7 @@
     // half-rendered React tree can't store a bogus snapshot.
     let dirty = false;
     const starsSeen = rows.map((r) => r.stars).sort().join('');
-    if (starsSeen === '12345') {
+    if (historyEnabled && starsSeen === '12345') {
       const byStar = [0, 0, 0, 0, 0];
       rows.forEach((row, i) => {
         byStar[row.stars - 1] = counts[i];
@@ -194,7 +234,7 @@
       dirty = recordSnapshot(store, key, total, byStar);
     }
 
-    const deltas = sessionDeltas.get(key) || null;
+    const deltas = historyEnabled ? sessionDeltas.get(key) || null : null;
 
     rows.forEach((row, i) => {
       const count = counts[i];
@@ -244,15 +284,21 @@
       }
     });
 
-    ensureHistoryButton(totalEl, key);
+    ensureHistoryButton(totalEl, key, historyEnabled);
     return dirty;
   }
 
   // --- history button + panel --------------------------------------------------
 
-  function ensureHistoryButton(totalEl, key) {
+  function ensureHistoryButton(totalEl, key, historyEnabled) {
     let btn = totalEl.nextElementSibling;
-    if (!btn || !btn.classList || !btn.classList.contains(BTN_CLASS)) {
+    const present = btn && btn.classList && btn.classList.contains(BTN_CLASS);
+    if (!historyEnabled) {
+      if (present) btn.remove();
+      if (panelKey === key) closePanel();
+      return;
+    }
+    if (!present) {
       btn = document.createElement('button');
       btn.type = 'button';
       btn.className = BTN_CLASS;
@@ -272,13 +318,33 @@
 
   let panel = null;
   let panelKey = null;
+  let panelBtn = null;
 
   function closePanel() {
     if (panel) {
       panel.remove();
       panel = null;
       panelKey = null;
+      panelBtn = null;
     }
+  }
+
+  function clearHistory(key) {
+    storageLoad()
+      .then((store) => {
+        delete store[key];
+        return storageSave(store);
+      })
+      .then(() => {
+        sessionDeltas.delete(key);
+        // Drop any on-chart delta badges immediately — the next run() won't
+        // re-add them now that the session deltas are gone.
+        for (const el of document.querySelectorAll('.' + ROW_CLASS + ' > .' + DELTA_CLASS)) {
+          el.remove();
+        }
+        // Re-render the open panel so it shows as empty.
+        if (panelKey === key && panelBtn) openPanel(panelBtn, key);
+      });
   }
 
   function esc(s) {
@@ -296,7 +362,7 @@
     return ' <span class="asc-rc-delta ' + cls + '">' + fmtDeltaText(d) + '</span>';
   }
 
-  function buildPanel(history) {
+  function buildPanel(history, key) {
     const el = document.createElement('div');
     el.className = 'asc-rc-panel';
     el.setAttribute('data-asc-ui', '');
@@ -304,7 +370,12 @@
     let html =
       '<div class="asc-rc-panel-head">' +
       '<span>Ratings history</span>' +
+      '<span class="asc-rc-panel-actions">' +
+      (history.length
+        ? '<button type="button" class="asc-rc-panel-clear">Clear</button>'
+        : '') +
       '<button type="button" class="asc-rc-panel-close" aria-label="Close">&times;</button>' +
+      '</span>' +
       '</div>';
 
     if (!history.length) {
@@ -336,14 +407,27 @@
 
     el.innerHTML = html;
     el.querySelector('.asc-rc-panel-close').addEventListener('click', closePanel);
+    const clearBtn = el.querySelector('.asc-rc-panel-clear');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        if (
+          typeof window.confirm === 'function' &&
+          !window.confirm('Clear the stored ratings history for this app?')
+        ) {
+          return;
+        }
+        clearHistory(key);
+      });
+    }
     return el;
   }
 
   function openPanel(btn, key) {
     storageLoad().then((store) => {
       closePanel();
-      panel = buildPanel(store[key] || []);
+      panel = buildPanel(store[key] || [], key);
       panelKey = key;
+      panelBtn = btn;
       document.body.appendChild(panel);
 
       // Anchor below the button, right edge clamped to the viewport.
@@ -363,7 +447,7 @@
     (e) => {
       if (!panel) return;
       const t = e.target;
-      if (t instanceof Element && (panel.contains(t) || t.closest('.' + BTN_CLASS))) return;
+      if (t && typeof t.closest === 'function' && (panel.contains(t) || t.closest('.' + BTN_CLASS))) return;
       closePanel();
     },
     true
@@ -374,7 +458,7 @@
   window.addEventListener(
     'scroll',
     (e) => {
-      if (panel && !(e.target instanceof Node && panel.contains(e.target))) closePanel();
+      if (panel && !(e.target && panel.contains(e.target))) closePanel();
     },
     true
   );
@@ -399,10 +483,15 @@
     }
     if (!containers.length) return;
 
+    // History features only run on the unfiltered "All Countries or Regions"
+    // view — a filtered territory would store its (different) numbers under
+    // the same app key and corrupt the history. Count pills still work.
+    const historyEnabled = territoryIsAllCountries();
+
     const store = await storageLoad();
     let dirty = false;
     containers.forEach((container, i) => {
-      if (annotateChart(container, chartKeyFor(i), store)) dirty = true;
+      if (annotateChart(container, chartKeyFor(i), store, historyEnabled)) dirty = true;
     });
     if (dirty) await storageSave(store);
   }

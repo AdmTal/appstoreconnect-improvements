@@ -95,6 +95,29 @@
   font-size: 13px;
 }
 
+.asc-rc-panel-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.asc-rc-panel-clear {
+  border: none;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(227, 0, 0, 0.08);
+  color: #e30000;
+  font: 600 11px/16px -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.asc-rc-panel-clear:hover {
+  background: #e30000;
+  color: #ffffff;
+}
+
 .asc-rc-panel-close {
   border: none;
   background: none;
