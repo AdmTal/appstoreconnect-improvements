@@ -189,8 +189,9 @@
   // --- history recording -----------------------------------------------------
 
   // Records a snapshot into store[key] when the counts differ from the last
-  // stored row. Returns true when the store was modified. byStar is indexed
-  // 0..4 for 1..5 stars.
+  // stored row. Returns 'baseline' for the first-ever row, 'changed' when a
+  // change was recorded, false when nothing changed. byStar is indexed 0..4
+  // for 1..5 stars.
   function recordSnapshot(store, key, total, byStar) {
     const history = store[key] || (store[key] = []);
     const last = history[history.length - 1];
@@ -204,7 +205,89 @@
     if (history.length > MAX_ROWS_PER_CHART) {
       history.splice(0, history.length - MAX_ROWS_PER_CHART);
     }
-    return true;
+    return last ? 'changed' : 'baseline';
+  }
+
+  // --- confetti --------------------------------------------------------------
+  // A little celebration when a "+" shows up. Purely decorative: any failure
+  // (no canvas, no rAF, reduced-motion preference) silently skips it.
+
+  let confetti = null; // { canvas, ctx, parts, raf }
+
+  function celebrate(origins) {
+    try {
+      if (!origins.length || typeof requestAnimationFrame !== 'function') return;
+      if (
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ) {
+        return;
+      }
+      if (!confetti) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext && canvas.getContext('2d');
+        if (!ctx) return;
+        canvas.className = 'asc-rc-confetti';
+        canvas.setAttribute('data-asc-ui', '');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        document.body.appendChild(canvas);
+        confetti = { canvas, ctx, parts: [], raf: null };
+      }
+      const colors = ['#0071e3', '#1d9d50', '#ff9f0a', '#ff375f', '#bf5af2', '#ffd60a'];
+      for (const el of origins) {
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        for (let i = 0; i < 40; i++) {
+          const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.3;
+          const speed = 3.5 + Math.random() * 7;
+          confetti.parts.push({
+            x: cx,
+            y: cy,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: 4 + Math.random() * 4,
+            color: colors[i % colors.length],
+            rot: Math.random() * Math.PI,
+            vr: (Math.random() - 0.5) * 0.4,
+            life: 60 + Math.random() * 40,
+          });
+        }
+      }
+      if (confetti.raf === null) confetti.raf = requestAnimationFrame(confettiTick);
+    } catch (e) {
+      /* decorative only */
+    }
+  }
+
+  function confettiTick() {
+    const c = confetti;
+    if (!c) return;
+    const { ctx, canvas } = c;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of c.parts) {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.18;
+      p.vx *= 0.99;
+      p.rot += p.vr;
+      p.life--;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life / 25));
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.62);
+      ctx.restore();
+    }
+    c.parts = c.parts.filter((p) => p.life > 0 && p.y < canvas.height + 20);
+    if (c.parts.length) {
+      c.raf = requestAnimationFrame(confettiTick);
+    } else {
+      canvas.remove();
+      confetti = null;
+    }
   }
 
   // --- DOM annotation ----------------------------------------------------------
@@ -225,16 +308,20 @@
     // Only record history for a fully-rendered 1–5 star chart, so a
     // half-rendered React tree can't store a bogus snapshot.
     let dirty = false;
+    let changedNow = false;
     const starsSeen = rows.map((r) => r.stars).sort().join('');
     if (historyEnabled && starsSeen === '12345') {
       const byStar = [0, 0, 0, 0, 0];
       rows.forEach((row, i) => {
         byStar[row.stars - 1] = counts[i];
       });
-      dirty = recordSnapshot(store, key, total, byStar);
+      const rec = recordSnapshot(store, key, total, byStar);
+      dirty = Boolean(rec);
+      changedNow = rec === 'changed';
     }
 
     const deltas = historyEnabled ? sessionDeltas.get(key) || null : null;
+    let fiveStarDeltaEl = null;
 
     rows.forEach((row, i) => {
       const count = counts[i];
@@ -279,10 +366,14 @@
         if (deltaEl.textContent !== txt) deltaEl.textContent = txt;
         deltaEl.classList.toggle('asc-rc-delta--up', delta > 0);
         deltaEl.classList.toggle('asc-rc-delta--down', delta < 0);
+        if (row.stars === 5 && delta > 0) fiveStarDeltaEl = deltaEl;
       } else if (deltaEl) {
         deltaEl.remove();
       }
     });
+
+    // Confetti, but only for the moment a 5-star gain is first detected.
+    if (changedNow && fiveStarDeltaEl) celebrate([fiveStarDeltaEl]);
 
     ensureHistoryButton(totalEl, key, historyEnabled);
     return dirty;

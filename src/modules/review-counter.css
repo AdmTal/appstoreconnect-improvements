@@ -33,14 +33,21 @@
 /* Change since the previous snapshot ("+2" / "-1"), next to the pill and
    inside history-table cells. */
 .asc-rc-delta {
-  flex: 0 0 auto;
-  align-self: center;
-  margin-left: 5px;
   font: 700 11px/16px -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   cursor: default;
+}
+
+/* On a star row the delta hangs off the row's right edge (the row is
+   position:relative) instead of participating in the flex layout — so the
+   bar keeps its full width whether or not a delta is showing. */
+.asc-rc-row > .asc-rc-delta {
+  position: absolute;
+  left: calc(100% + 7px);
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .asc-rc-delta--up {
@@ -49,6 +56,14 @@
 
 .asc-rc-delta--down {
   color: #e30000;
+}
+
+/* Full-viewport confetti canvas — decorative, never intercepts clicks. */
+.asc-rc-confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 999998;
+  pointer-events: none;
 }
 
 /* "History" button under the "N Ratings" total. */
