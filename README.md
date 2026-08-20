@@ -1,6 +1,13 @@
 # App Store Connect Improvements
 
-One Chrome extension hosting a growing collection of quality-of-life tweaks ("hacks") for [App Store Connect](https://appstoreconnect.apple.com).
+A tiny Chrome extension that makes App Store Connect a little less annoying. Right now it's one thing: a ratings helper that shows exact per-star counts and tracks how they change over time. More might show up later.
+
+It's a vibe-coded mess — PRs welcome anyway.
+
+| Exact counts | Change badges | History |
+| --- | --- | --- |
+| ![Per-star count pills](docs/img/counts.png) | ![+1 delta badge](docs/img/deltas.png) | ![History panel](docs/img/history.png) |
+| Apple only shows bars. Each bar gets a pill with the **exact number of ratings** for that star, recovered from the bar's full-precision width and the ratings total. | When a count changed since the last time you looked, a **+x / -x** badge appears next to it for the rest of the session. | The **History** button opens a table of every recorded change — date, time, total, and per-star counts, newest first. **Clear** wipes it. |
 
 ## Install
 
