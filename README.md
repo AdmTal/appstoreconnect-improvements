@@ -4,10 +4,13 @@ A tiny Chrome extension that makes App Store Connect a little less annoying. Rig
 
 It's a vibe-coded mess — PRs welcome anyway.
 
-| Exact counts | Change badges | History |
-| --- | --- | --- |
-| ![Per-star count pills](docs/img/counts.png) | ![+1 delta badge](docs/img/deltas.png) | ![History panel](docs/img/history.png) |
-| Apple only shows bars. Each bar gets a pill with the **exact number of ratings** for that star, recovered from the bar's full-precision width and the ratings total. | When a count changed since the last time you looked, a **+x / -x** badge appears next to it for the rest of the session. | The **History** button opens a table of every recorded change — date, time, total, and per-star counts, newest first. **Clear** wipes it. |
+| Exact counts | Good news |
+| --- | --- |
+| ![Per-star count pills](docs/img/counts.png) | ![Green +1 on the 5-star row with confetti](docs/img/deltas.png) |
+| Apple only shows bars. Each bar gets a pill with the **exact number of ratings** for that star, recovered from the bar's full-precision width and the ratings total. | A count that changed since you last looked gets a **+x / -x** badge. A new 5-star is green — and gets confetti. |
+| **Bad news** | **History** |
+| ![Red +1 on the 1-star row with crying emoji](docs/img/sad.png) | ![History panel](docs/img/history.png) |
+| A new 1- or 2-star is **red**, because "+1" there isn't a win. It gets confetti too, just sadder. | The **History** button opens every recorded change. Numbers are grey; the ones that moved are **bold green or red**. **Clear** wipes it. |
 
 ## Install
 
@@ -31,9 +34,11 @@ Details:
 It also **tracks changes over time**:
 
 - Every time you view the chart, the current per-star counts are compared with the last stored snapshot (kept in `chrome.storage.local`, keyed by app id). A new history row is stored **only when a number actually changed** — and only when you actually have the page open; nothing polls in the background.
-- When a change is detected, each changed number gets a green `+x` / red `-x` delta next to its count pill for the rest of the page session. The badge hangs off the right edge of the row, so the bars keep their full width.
-- A new 5-star rating gets confetti. Obviously. (Respects `prefers-reduced-motion`.)
-- A **History** button under the "N Ratings" total opens a panel with a table of every recorded snapshot — date, time, total, and 1–5 star counts, newest first, with per-row deltas against the previous snapshot. History is capped at 500 rows per chart. A **Clear** button in the panel wipes the stored history for that app (with a confirm).
+- When a change is detected, each changed number gets a `+x` / `-x` delta next to its count pill for the rest of the page session. The badge hangs off the right edge of the row, so the bars keep their full width.
+- Colour follows **good/bad news, not the sign**: more 1- or 2-star ratings is red, more of anything else is green (and fewer 1-stars is green).
+- A new 5-star rating gets confetti. A new 1- or 2-star gets sad-emoji confetti instead. (Both respect `prefers-reduced-motion`.)
+- A **History** button under the "N Ratings" total opens a panel with a table of every recorded snapshot — date, time, total, and 1–5 star counts, newest first. Numbers are grey; the ones that changed from the row below are bold and green or red, so you can see at a glance what moved. Hover a highlighted number for the exact `+x`.
+- History is capped at 500 rows per chart. A **Clear** button in the panel wipes the stored history for that app (with a confirm).
 - History only tracks the unfiltered chart: snapshots, deltas, and the History button are active only while the territory picker shows **All Countries or Regions**. Filtered territories still get count pills, but never touch the stored history.
 
 ## Structure

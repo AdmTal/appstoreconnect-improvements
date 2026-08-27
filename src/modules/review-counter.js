@@ -209,12 +209,16 @@
   }
 
   // --- confetti --------------------------------------------------------------
-  // A little celebration when a "+" shows up. Purely decorative: any failure
+  // A burst when the star counts move: paper confetti for a new 5-star,
+  // raining sad emoji for a new 1- or 2-star. Purely decorative: any failure
   // (no canvas, no rAF, reduced-motion preference) silently skips it.
 
   let confetti = null; // { canvas, ctx, parts, raf }
 
-  function celebrate(origins) {
+  const HAPPY_COLORS = ['#0071e3', '#1d9d50', '#ff9f0a', '#ff375f', '#bf5af2', '#ffd60a'];
+  const SAD_GLYPHS = ['\u{1F622}', '\u{1F62D}', '\u{1F614}', '\u{1F494}'];
+
+  function burst(origins, mood) {
     try {
       if (!origins.length || typeof requestAnimationFrame !== 'function') return;
       if (
@@ -234,24 +238,32 @@
         document.body.appendChild(canvas);
         confetti = { canvas, ctx, parts: [], raf: null };
       }
-      const colors = ['#0071e3', '#1d9d50', '#ff9f0a', '#ff375f', '#bf5af2', '#ffd60a'];
+      const sad = mood === 'sad';
       for (const el of origins) {
         const r = el.getBoundingClientRect();
         const cx = r.left + r.width / 2;
-        const cy = r.top + r.height / 2;
-        for (let i = 0; i < 40; i++) {
-          const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.3;
-          const speed = 3.5 + Math.random() * 7;
+        // Sad emoji are big enough to hide the badge they spawn from, so
+        // start them above it and let them rain down past.
+        const cy = sad ? r.top - 14 : r.top + r.height / 2;
+        // Sad emoji dribble out and fall; happy paper shoots up and scatters.
+        const count = sad ? 14 : 40;
+        for (let i = 0; i < count; i++) {
+          const angle = sad
+            ? -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 0.8
+            : -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.3;
+          const speed = sad ? 1 + Math.random() * 2.5 : 3.5 + Math.random() * 7;
           confetti.parts.push({
             x: cx,
             y: cy,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
-            size: 4 + Math.random() * 4,
-            color: colors[i % colors.length],
-            rot: Math.random() * Math.PI,
-            vr: (Math.random() - 0.5) * 0.4,
-            life: 60 + Math.random() * 40,
+            size: sad ? 16 + Math.random() * 8 : 4 + Math.random() * 4,
+            glyph: sad ? SAD_GLYPHS[i % SAD_GLYPHS.length] : null,
+            color: HAPPY_COLORS[i % HAPPY_COLORS.length],
+            rot: sad ? (Math.random() - 0.5) * 0.5 : Math.random() * Math.PI,
+            vr: sad ? (Math.random() - 0.5) * 0.08 : (Math.random() - 0.5) * 0.4,
+            gravity: sad ? 0.09 : 0.18,
+            life: sad ? 90 + Math.random() * 50 : 60 + Math.random() * 40,
           });
         }
       }
@@ -269,7 +281,7 @@
     for (const p of c.parts) {
       p.x += p.vx;
       p.y += p.vy;
-      p.vy += 0.18;
+      p.vy += p.gravity;
       p.vx *= 0.99;
       p.rot += p.vr;
       p.life--;
@@ -277,11 +289,18 @@
       ctx.globalAlpha = Math.max(0, Math.min(1, p.life / 25));
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rot);
-      ctx.fillStyle = p.color;
-      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.62);
+      if (p.glyph) {
+        ctx.font = p.size + 'px -apple-system, "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.glyph, 0, 0);
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.62);
+      }
       ctx.restore();
     }
-    c.parts = c.parts.filter((p) => p.life > 0 && p.y < canvas.height + 20);
+    c.parts = c.parts.filter((p) => p.life > 0 && p.y < canvas.height + 30);
     if (c.parts.length) {
       c.raf = requestAnimationFrame(confettiTick);
     } else {
@@ -294,6 +313,15 @@
 
   function fmtDeltaText(d) {
     return (d > 0 ? '+' : '-') + Math.abs(d).toLocaleString();
+  }
+
+  // Is this change good news? More 1- and 2-star ratings is bad; more of
+  // anything else (and a bigger total) is good. Drives colour everywhere:
+  // green for good, red for bad, regardless of the +/- sign.
+  //  stars: 1..5, or 0 for the ratings total.
+  function isGoodChange(stars, delta) {
+    const badWhenUp = stars === 1 || stars === 2;
+    return badWhenUp ? delta < 0 : delta > 0;
   }
 
   function annotateChart(container, key, store, historyEnabled) {
@@ -321,7 +349,8 @@
     }
 
     const deltas = historyEnabled ? sessionDeltas.get(key) || null : null;
-    let fiveStarDeltaEl = null;
+    let happyDeltaEl = null; // a new 5-star
+    let sadDeltaEl = null; // a new 1- or 2-star
 
     rows.forEach((row, i) => {
       const count = counts[i];
@@ -364,16 +393,25 @@
         }
         const txt = fmtDeltaText(delta);
         if (deltaEl.textContent !== txt) deltaEl.textContent = txt;
-        deltaEl.classList.toggle('asc-rc-delta--up', delta > 0);
-        deltaEl.classList.toggle('asc-rc-delta--down', delta < 0);
-        if (row.stars === 5 && delta > 0) fiveStarDeltaEl = deltaEl;
+        // Colour by good/bad news, not by sign: "+1" on a 1-star row is red.
+        const good = isGoodChange(row.stars, delta);
+        deltaEl.classList.toggle('asc-rc-delta--good', good);
+        deltaEl.classList.toggle('asc-rc-delta--bad', !good);
+        if (delta > 0) {
+          if (row.stars === 5) happyDeltaEl = deltaEl;
+          else if (row.stars === 1 || row.stars === 2) sadDeltaEl = deltaEl;
+        }
       } else if (deltaEl) {
         deltaEl.remove();
       }
     });
 
-    // Confetti, but only for the moment a 5-star gain is first detected.
-    if (changedNow && fiveStarDeltaEl) celebrate([fiveStarDeltaEl]);
+    // Only at the moment a change is first detected: paper for a new 5-star,
+    // sad emoji for a new 1- or 2-star. A round that brought both gets both.
+    if (changedNow) {
+      if (happyDeltaEl) burst([happyDeltaEl], 'happy');
+      if (sadDeltaEl) burst([sadDeltaEl], 'sad');
+    }
 
     ensureHistoryButton(totalEl, key, historyEnabled);
     return dirty;
@@ -447,10 +485,14 @@
     })[ch]);
   }
 
-  function deltaCellHtml(d) {
-    if (!d) return '';
-    const cls = d > 0 ? 'asc-rc-delta--up' : 'asc-rc-delta--down';
-    return ' <span class="asc-rc-delta ' + cls + '">' + fmtDeltaText(d) + '</span>';
+  // One number cell. Numbers are grey by default; a number that moved since
+  // the previous snapshot goes bold and green (good) or red (bad). No "+x"
+  // here — the colour is the callout.
+  function numCellHtml(value, delta, stars) {
+    let cls = 'asc-rc-num';
+    if (delta) cls += isGoodChange(stars, delta) ? ' asc-rc-num--good' : ' asc-rc-num--bad';
+    const title = delta ? ' title="' + esc(fmtDeltaText(delta) + ' since the previous row') + '"' : '';
+    return '<td class="' + cls + '"' + title + '>' + value.toLocaleString() + '</td>';
   }
 
   function buildPanel(history, key) {
@@ -473,19 +515,20 @@
       html += '<div class="asc-rc-panel-empty">No snapshots recorded yet.</div>';
     } else {
       let body = '';
-      // Newest first; each row's deltas compare against the row below it
-      // (the chronologically previous snapshot).
+      // Newest first; each row is compared against the row below it (the
+      // chronologically previous snapshot) to decide which numbers moved.
       for (let i = history.length - 1; i >= 0; i--) {
         const row = history[i];
         const prev = history[i - 1] || null;
         const d = new Date(row.t);
         let cells =
-          '<td>' + esc(d.toLocaleDateString()) + '</td>' +
-          '<td>' + esc(d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) + '</td>' +
-          '<td>' + row.total.toLocaleString() + (prev ? deltaCellHtml(row.total - prev.total) : '') + '</td>';
+          '<td class="asc-rc-when">' + esc(d.toLocaleDateString()) + '</td>' +
+          '<td class="asc-rc-when">' +
+          esc(d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) +
+          '</td>' +
+          numCellHtml(row.total, prev ? row.total - prev.total : 0, 0);
         for (let s = 0; s < 5; s++) {
-          cells +=
-            '<td>' + row.c[s].toLocaleString() + (prev ? deltaCellHtml(row.c[s] - prev.c[s]) : '') + '</td>';
+          cells += numCellHtml(row.c[s], prev ? row.c[s] - prev.c[s] : 0, s + 1);
         }
         body += '<tr>' + cells + '</tr>';
       }

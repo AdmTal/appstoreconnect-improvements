@@ -50,11 +50,13 @@
   transform: translateY(-50%);
 }
 
-.asc-rc-delta--up {
+/* Coloured by good/bad news rather than by sign: a "+1" on the 1-star row
+   is red, a "-1" there is green. */
+.asc-rc-delta--good {
   color: #1d9d50;
 }
 
-.asc-rc-delta--down {
+.asc-rc-delta--bad {
   color: #e30000;
 }
 
@@ -191,8 +193,23 @@
   background: rgba(0, 0, 0, 0.03);
 }
 
-.asc-rc-table .asc-rc-delta {
-  margin-left: 3px;
+.asc-rc-table .asc-rc-when {
+  color: #1d1d1f;
+}
+
+/* Numbers read grey until one moves; the mover goes bold and colour-coded. */
+.asc-rc-table .asc-rc-num {
+  color: #86868b;
+}
+
+.asc-rc-table .asc-rc-num--good {
+  color: #1d9d50;
+  font-weight: 700;
+}
+
+.asc-rc-table .asc-rc-num--bad {
+  color: #e30000;
+  font-weight: 700;
 }
 
 /* Tooltip bubble, anchored to the row's right edge above the pill. */
